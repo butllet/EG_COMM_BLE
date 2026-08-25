@@ -1,8 +1,15 @@
 export type DataHandler = (d: Uint8Array) => void;
 export type CloseHandler = (reason: string) => void;
+export type TransportKind = "serial" | "bluetooth";
+
+// Web Bluetooth 的 UUID 校验要求标准小写格式。
+export const CH572_BLE_SERVICE_UUID = "9a7f0001-3b72-4f8a-9c6d-2e1b5a70c572";
+export const CH572_BLE_WRITE_UUID = "9a7f0002-3b72-4f8a-9c6d-2e1b5a70c572";
+export const CH572_BLE_NOTIFY_UUID = "9a7f0003-3b72-4f8a-9c6d-2e1b5a70c572";
 
 export interface ITransport {
   readonly name: string;
+  readonly kind: TransportKind;
   onData: DataHandler;
   onClose: CloseHandler;
   open(): Promise<void>;
@@ -18,6 +25,7 @@ export interface ITransport {
 /* ================= 真实串口（Web Serial API，Windows Chrome/Edge 可用） ================= */
 export class WebSerialTransport implements ITransport {
   readonly name = "真实串口";
+  readonly kind = "serial" as const;
   onData: DataHandler = () => {};
   onClose: CloseHandler = () => {};
 
@@ -133,5 +141,113 @@ export class WebSerialTransport implements ITransport {
       }
     } catch { /* noop */ }
     return `串口设备 @ ${this.baud}`;
+  }
+}
+
+/**
+ * CH572 BLE GATT 透明桥接。
+ * Notify 流是 UART → BLE；Write Without Response 是 BLE → UART。
+ */
+export class WebBluetoothTransport implements ITransport {
+  readonly name = "蓝牙透传";
+  readonly kind = "bluetooth" as const;
+  onData: DataHandler = () => {};
+  onClose: CloseHandler = () => {};
+
+  private device: BluetoothDevice | null = null;
+  private gatt: BluetoothRemoteGATTServer | null = null;
+  private writeCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+  private notifyCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+  private deviceName = "CH572 BLE";
+  private intentional = false;
+
+  constructor(private readonly deviceNameFilter = "") {}
+
+  private readonly handleNotification = (event: Event) => {
+    const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
+    if (!value || value.byteLength === 0) return;
+    const bytes = new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+    this.onData(bytes);
+  };
+
+  private readonly handleDisconnected = () => {
+    this.clearCharacteristics();
+    if (!this.intentional) this.onClose("蓝牙连接已断开");
+  };
+
+  getBaud(): number {
+    // CH572 固件侧的透明 UART 固定为 115200-8-N-1。
+    return 115200;
+  }
+
+  async open(): Promise<void> {
+    if (!("bluetooth" in navigator) || !navigator.bluetooth) {
+      throw new Error("当前浏览器不支持 Web Bluetooth（请使用 Chrome / Edge，并在 HTTPS 或 localhost 下访问）");
+    }
+
+    this.intentional = false;
+    try {
+      const name = this.deviceNameFilter.trim();
+      this.device = await navigator.bluetooth.requestDevice({
+        filters: [{
+          services: [CH572_BLE_SERVICE_UUID],
+          ...(name ? { name } : {}),
+        }],
+      });
+      this.deviceName = this.device.name || "CH572 BLE";
+      this.device.addEventListener("gattserverdisconnected", this.handleDisconnected);
+      if (!this.device.gatt) throw new Error("所选蓝牙设备不提供 GATT 服务");
+
+      this.gatt = await this.device.gatt.connect();
+      const service = await this.gatt.getPrimaryService(CH572_BLE_SERVICE_UUID);
+      this.writeCharacteristic = await service.getCharacteristic(CH572_BLE_WRITE_UUID);
+      this.notifyCharacteristic = await service.getCharacteristic(CH572_BLE_NOTIFY_UUID);
+      if (!this.writeCharacteristic.properties.writeWithoutResponse) {
+        throw new Error("设备缺少 BLE → UART Write Without Response 特征（…0002）");
+      }
+      if (!this.notifyCharacteristic.properties.notify) {
+        throw new Error("设备缺少 UART → BLE Notify 特征（…0003）");
+      }
+
+      this.notifyCharacteristic.addEventListener("characteristicvaluechanged", this.handleNotification);
+      await this.notifyCharacteristic.startNotifications();
+    } catch (error) {
+      await this.close();
+      throw error;
+    }
+  }
+
+  async send(data: Uint8Array): Promise<void> {
+    if (!this.gatt?.connected || !this.writeCharacteristic) throw new Error("蓝牙未连接");
+    // CH572 桥接固件按 20B 单包接收；间隔避免连续写导致无线缓冲溢出。
+    for (let offset = 0; offset < data.length; offset += 20) {
+      await this.writeCharacteristic.writeValueWithoutResponse(data.slice(offset, offset + 20));
+      if (offset + 20 < data.length) await new Promise<void>((resolve) => window.setTimeout(resolve, 10));
+    }
+  }
+
+  async changeBaud(): Promise<void> {
+    throw new Error("蓝牙透传的桥接 UART 固定为 115200 bps，不能在网页中切换波特率");
+  }
+
+  async close(): Promise<void> {
+    this.intentional = true;
+    try { this.notifyCharacteristic?.removeEventListener("characteristicvaluechanged", this.handleNotification); } catch { /* noop */ }
+    try { await this.notifyCharacteristic?.stopNotifications(); } catch { /* noop */ }
+    try { this.gatt?.disconnect(); } catch { /* noop */ }
+    try { this.device?.removeEventListener("gattserverdisconnected", this.handleDisconnected); } catch { /* noop */ }
+    this.clearCharacteristics();
+    this.device = null;
+  }
+
+  describe(): string {
+    return `${this.deviceName} · BLE 透传 · UART 115200bps`;
+  }
+
+  private clearCharacteristics() {
+    try { this.notifyCharacteristic?.removeEventListener("characteristicvaluechanged", this.handleNotification); } catch { /* noop */ }
+    this.writeCharacteristic = null;
+    this.notifyCharacteristic = null;
+    this.gatt = null;
   }
 }

@@ -1,9 +1,7 @@
 import type { DType } from "./protocol";
 
-/* 寄存器定义 —— 来源：Excel《寄存器表》
- * PAGE  来自结构体“页数值”
- * ADDR  来自每个寄存器的“偏移地址”
- * 内置 DEFAULT_PAGES 仅作未导入时的占位；用户导入 Excel 后由 App 动态替换。
+/* 寄存器定义 —— 来自已装载 Chip Pack 的 pages 清单。
+ * PAGE 来自页数值，ADDR 来自每个寄存器的偏移地址。
  */
 
 export type Access = "R" | "W/R";
@@ -25,7 +23,7 @@ export interface PageDef {
   writable: boolean; // 页面是否允许写（存在任一 W/R 字段即为可写页）
   totalLen: number;  // 全部成员总长度（批量读写用）
   regs: RegDef[];
-  imported?: boolean; // 是否来自 Excel 导入
+  imported?: boolean; // 是否来自外部 Chip Pack
 }
 
 export const DEFAULT_PAGES: PageDef[] = [

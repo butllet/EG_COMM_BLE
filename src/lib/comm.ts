@@ -1,7 +1,7 @@
 import { CMD_NAME, FrameParser, h16, h8, parseFrame, respCmdOf, toHex, buildFrame } from "./protocol";
 import type { ParsedFrame } from "./protocol";
-import type { ITransport } from "./transport";
-import { WebSerialTransport } from "./transport";
+import type { ITransport, TransportKind } from "./transport";
+import { WebBluetoothTransport, WebSerialTransport } from "./transport";
 
 export type LogLevel = "info" | "ok" | "err";
 export type LogDir = "tx" | "rx" | "sys";
@@ -27,7 +27,7 @@ export interface Counters {
 interface EngineEvents {
   onLog: (e: LogEntry) => void;
   onCounters: (c: Counters) => void;
-  onConn: (connected: boolean, desc: string) => void;
+  onConn: (connected: boolean, desc: string, kind: TransportKind | null) => void;
 }
 
 type MatchResult = "hit" | "fail" | null;
@@ -72,13 +72,29 @@ export class CommEngine {
     await this.attach(t);
   }
 
+  async connectBluetooth(deviceName?: string): Promise<void> {
+    const t = new WebBluetoothTransport(deviceName);
+    await this.attach(t);
+  }
+
   private async attach(t: ITransport): Promise<void> {
+    if (this.transport) throw new Error("已有连接，请先断开当前传输方式");
     t.onData = (d) => this.handleRx(d);
+    t.onClose = (reason) => this.handleTransportClose(t, reason);
     await t.open();
     this.transport = t;
     this.parser.reset();
-    this.ev.onConn(true, t.describe());
+    this.ev.onConn(true, t.describe(), t.kind);
     this.sys(`${t.name} 已连接 · ${t.describe()}`, "ok");
+  }
+
+  private handleTransportClose(t: ITransport, reason: string) {
+    if (this.transport !== t) return;
+    this.transport = null;
+    this.setOtaMode(false);
+    this.rejectAll(new Error(reason));
+    this.ev.onConn(false, "", null);
+    this.sys(reason, "info");
   }
 
   async disconnect(): Promise<void> {
@@ -89,7 +105,7 @@ export class CommEngine {
       try { await t.close(); } catch { /* noop */ }
     }
     this.rejectAll(new Error("连接已断开"));
-    this.ev.onConn(false, "");
+    this.ev.onConn(false, "", null);
     this.sys("连接已断开", "info");
   }
 

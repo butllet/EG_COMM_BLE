@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileUp, FolderOpen, Loader2, Rocket, Terminal } from "lucide-react";
+import { FileUp, FolderOpen, Loader2, Rocket, Terminal, TriangleAlert } from "lucide-react";
 import type { CommEngine } from "../lib/comm";
 import { BOOT_MENU_APP, BOOT_MENU_BOT, OtaSession, type OtaFirmware } from "../lib/ota";
 import { Badge, Btn, Card, INPUT_CLS } from "./ui";
@@ -10,6 +10,8 @@ export interface OtaPanelProps {
   engine: CommEngine;
   /** 侧栏当前选择的波特率，升级结束后恢复到此值 */
   uiBaud: number;
+  /** Web Bluetooth 透明桥接不支持 OTA 的裸波特率切换与 YModem 流程。 */
+  otaSupported: boolean;
   onBusy: (busy: boolean) => void;
   toast: (type: "ok" | "err" | "info", msg: string) => void;
 }
@@ -93,6 +95,10 @@ export function OtaPanel(p: OtaPanelProps) {
   }, [appendLog, p]);
 
   const onDownload = useCallback(() => {
+    if (!p.otaSupported) {
+      p.toast("info", "蓝牙透传模式暂不支持 OTA，请断开后切换到串口。");
+      return;
+    }
     if (!p.connected) {
       p.toast("err", "请先打开指定的串口。");
       return;
@@ -161,6 +167,22 @@ export function OtaPanel(p: OtaPanelProps) {
     confirmResolver.current = null;
     setConfirmText(null);
   };
+
+  if (!p.otaSupported && !running) {
+    return (
+      <div className="relative mx-auto max-w-5xl space-y-4 pb-2">
+        <Card title="OTA 升级" icon={<Rocket size={13} />}>
+          <div className="flex items-start gap-3 rounded-xl border border-amber-400/25 bg-amber-400/[0.07] p-4 text-[12px] leading-relaxed text-amber-100/85">
+            <TriangleAlert size={17} className="mt-0.5 shrink-0 text-amber-300" />
+            <div>
+              <p className="font-semibold text-amber-200">蓝牙透传模式暂不支持 OTA</p>
+              <p className="mt-1">OTA 需要切换串口波特率并执行 YModem 裸字节传输；CH572 的 Web Bluetooth 透明桥接首版仅支持寄存器与协议帧通信。请断开蓝牙后切换至“串口”模式。</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="relative mx-auto max-w-5xl space-y-4 pb-2">

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BookOpenText, Braces, CheckCircle2, ChevronRight, CircleHelp, Cpu, Info, Rocket, Table2, XCircle,
+  BookOpenText, Braces, CheckCircle2, ChevronRight, CircleHelp, Cpu, Info, PackageCheck, Rocket, Table2, XCircle,
 } from "lucide-react";
 import { CommEngine, type Counters, type LogEntry } from "./lib/comm";
+import type { TransportKind } from "./lib/transport";
 import {
   CMD, WRITE_STATUS, encodeField, fieldDisplay, h8, parseProtoIdHex, protoIdToHex,
   restoreProtoId, setProtoId, toHex,
 } from "./lib/protocol";
-import { DEFAULT_PAGES, pageOf, regKey } from "./lib/registers";
+import { pageOf, regKey } from "./lib/registers";
 import type { PageDef, RegDef } from "./lib/registers";
-import { parseRegisterWorkbook } from "./lib/excelPages";
+import { allChipPacks, loadInstalledPacks, loadSelectedChipId, parseChipPack, persistInstalledPacks, persistSelectedChipId, removeInstalledPack, type ChipPack } from "./lib/packs";
 import { SideBar } from "./components/SideBar";
+import { ChipSelector } from "./components/ChipSelector";
 import { RegisterTable, type ChangedMark } from "./components/RegisterTable";
 import { FrameBuilder } from "./components/FrameBuilder";
 import { LogConsole } from "./components/LogConsole";
@@ -20,9 +22,10 @@ import { OtaPanel } from "./components/OtaPanel";
 import { Badge, Btn } from "./components/ui";
 import { cn } from "./utils/cn";
 
-type TabId = "regs" | "builder" | "ota" | "docs" | "guide";
+type TabId = "chips" | "regs" | "builder" | "ota" | "docs" | "guide";
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
+  { id: "chips", label: "芯片选择", icon: <PackageCheck size={13} /> },
   { id: "regs", label: "寄存器调试", icon: <Table2 size={13} /> },
   { id: "builder", label: "帧构建 / 解析", icon: <Braces size={13} /> },
   { id: "ota", label: "OTA 升级", icon: <Rocket size={13} /> },
@@ -30,55 +33,38 @@ const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
   { id: "guide", label: "用户使用说明", icon: <CircleHelp size={13} /> },
 ];
 
-const LS_PAGES = "egcc.pages";
-
 interface Toast { id: number; type: "ok" | "err" | "info"; msg: string }
 
 const SERIAL_SUPPORTED = typeof navigator !== "undefined" && "serial" in navigator;
-
-/** 从 localStorage 恢复导入的 PAGE 表；结构损坏则回退内置页 */
-function loadStoredPages(): PageDef[] {
-  try {
-    const s = localStorage.getItem(LS_PAGES);
-    if (!s) return DEFAULT_PAGES;
-    const parsed = JSON.parse(s) as PageDef[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_PAGES;
-    if (!parsed.every((p) => typeof p.id === "number" && Array.isArray(p.regs))) return DEFAULT_PAGES;
-    return parsed;
-  } catch {
-    return DEFAULT_PAGES;
-  }
-}
-
-function persistPages(pages: PageDef[]) {
-  try {
-    if (pages.some((p) => p.imported)) localStorage.setItem(LS_PAGES, JSON.stringify(pages));
-    else localStorage.removeItem(LS_PAGES);
-  } catch {
-    /* 忽略配额 / 隐私模式 */
-  }
-}
+const BLUETOOTH_SUPPORTED = typeof navigator !== "undefined" && "bluetooth" in navigator;
+type TransportMode = TransportKind;
 
 export default function App() {
   /* ---------- 连接 ---------- */
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [transportDesc, setTransportDesc] = useState("");
+  const [transportMode, setTransportMode] = useState<TransportMode>("serial");
+  const [connectedTransport, setConnectedTransport] = useState<TransportKind | null>(null);
+  const [bluetoothName, setBluetoothName] = useState("CH572_Direct");
   const [baud, setBaud] = useState(115200);
   /* ---------- 协议 ID（模块级 + React state 同步，驱动 UI 重渲染） ---------- */
   const [protoId, setProtoIdState] = useState<[number, number]>(() => restoreProtoId());
   const [protoIdText, setProtoIdText] = useState(() => protoIdToHex(restoreProtoId()));
   /* ---------- 数据 ---------- */
-  const [pages, setPages] = useState<PageDef[]>(() => loadStoredPages());
-  const [activePage, setActivePage] = useState(() => loadStoredPages()[0]?.id ?? 0x01);
-  const [tab, setTab] = useState<TabId>("regs");
+  const [installedPacks, setInstalledPacks] = useState<ChipPack[]>(() => loadInstalledPacks());
+  const [selectedChipId, setSelectedChipId] = useState(() => loadSelectedChipId());
+  const [activeChip, setActiveChip] = useState<ChipPack | null>(null);
+  const [pages, setPages] = useState<PageDef[]>([]);
+  const [activePage, setActivePage] = useState(0);
+  const [tab, setTab] = useState<TabId>("chips");
   const [mem, setMem] = useState<Record<number, Uint8Array | null>>({});
   const [readKeys, setReadKeys] = useState<Set<string>>(new Set());
   const [setVals, setSetVals] = useState<Record<string, string>>({});
   const [changed, setChanged] = useState<ChangedMark | null>(null);
   const [busyRow, setBusyRow] = useState<string | null>(null);
   const [batchBusy, setBatchBusy] = useState<string | null>(null);
-  const [importing, setImporting] = useState(false);
+  const [installing, setInstalling] = useState(false);
   /* ---------- 日志/计数 ---------- */
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [counters, setCounters] = useState<Counters>({ tx: 0, rx: 0, frames: 0, crcErr: 0 });
@@ -115,9 +101,10 @@ export default function App() {
       engineRef.current = new CommEngine({
         onLog: pushLog,
         onCounters: setCounters,
-        onConn: (c, desc) => {
+        onConn: (c, desc, kind) => {
           setConnected(c);
           setTransportDesc(desc);
+          setConnectedTransport(kind);
           if (!c) {
             setBusyRow(null);
             setBatchBusy(null);
@@ -146,25 +133,30 @@ export default function App() {
     const eng = getEngine();
     setConnecting(true);
     try {
-      await eng.connectSerial(baud);
-      toast("ok", `串口已打开 @ ${baud}`);
+      if (transportMode === "bluetooth") {
+        await eng.connectBluetooth(bluetoothName);
+        toast("ok", "蓝牙透传已连接 · 桥接 UART 115200bps");
+      } else {
+        await eng.connectSerial(baud);
+        toast("ok", `串口已打开 @ ${baud}`);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "连接失败";
-      toast("err", msg.includes("No port selected") || msg.includes("NotFoundError") ? "未选择串口设备" : msg);
+      const cancelled = msg.includes("No port selected") || msg.includes("NotFoundError");
+      toast("err", cancelled ? (transportMode === "bluetooth" ? "未选择蓝牙设备" : "未选择串口设备") : msg);
       eng.sys(`连接失败：${msg}`, "err");
     } finally {
       setConnecting(false);
     }
-  }, [getEngine, baud, toast]);
+  }, [getEngine, baud, toast, transportMode, bluetoothName]);
 
   const disconnect = useCallback(async () => {
     await getEngine().disconnect();
   }, [getEngine]);
 
-  /* ---------- Excel 导入 / 恢复内置页 ---------- */
+  /* ---------- 芯片 Pack 安装 / 装载 ---------- */
   const resetPageRuntime = useCallback((next: PageDef[]) => {
     setPages(next);
-    persistPages(next);
     setActivePage(next[0]?.id ?? 0);
     setMem({});
     setReadKeys(new Set());
@@ -172,25 +164,63 @@ export default function App() {
     setChanged(null);
   }, []);
 
-  const onImportExcel = useCallback(async (file: File) => {
-    setImporting(true);
+  const onInstallPack = useCallback(async (file: File) => {
+    setInstalling(true);
     try {
+      if (!file.name.endsWith(".CPack")) throw new Error("请选择 .CPack 文件（扩展名区分大小写）");
       const buf = await file.arrayBuffer();
-      const imported = parseRegisterWorkbook(buf);
-      resetPageRuntime(imported);
-      const names = imported.map((p) => `${p.name}(0x${h8(p.id)})`).join("、");
-      toast("ok", `已导入 ${imported.length} 页：${names}`);
+      const pack = parseChipPack(buf);
+      setInstalledPacks((previous) => {
+        const next = [...previous.filter((item) => item.chip.id !== pack.chip.id), pack];
+        persistInstalledPacks(next);
+        return next;
+      });
+      setSelectedChipId(pack.chip.id);
+      toast("ok", `已安装 ${pack.chip.model} v${pack.version}，请确认装载`);
     } catch (e) {
-      toast("err", `Excel 解析失败：${e instanceof Error ? e.message : e}`);
+      toast("err", `Pack 安装失败：${e instanceof Error ? e.message : e}`);
     } finally {
-      setImporting(false);
+      setInstalling(false);
     }
-  }, [resetPageRuntime, toast]);
+  }, [toast]);
 
-  const onRestorePages = useCallback(() => {
-    resetPageRuntime(DEFAULT_PAGES);
-    toast("info", "已恢复内置 SysConfig / DisplayReg");
-  }, [resetPageRuntime, toast]);
+  const chipPacks = allChipPacks(installedPacks);
+  const selectedChip = chipPacks.find((pack) => pack.chip.id === selectedChipId) ?? chipPacks[0];
+
+  const confirmChip = useCallback(() => {
+    if (connected) { toast("info", "请先断开串口后再切换芯片"); return; }
+    if (!selectedChip) { toast("err", "未找到所选芯片 Pack"); return; }
+    resetPageRuntime(selectedChip.pages);
+    const protocolId = parseProtoIdHex(selectedChip.connection.protocolId);
+    setProtoId(protocolId);
+    setProtoIdState(protocolId);
+    setProtoIdText(protoIdToHex(protocolId));
+    setBaud(selectedChip.connection.baud);
+    setActiveChip(selectedChip);
+    setSelectedChipId(selectedChip.chip.id);
+    persistSelectedChipId(selectedChip.chip.id);
+    setAutoPoll(false);
+    setTab("regs");
+    toast("ok", `已装载芯片：${selectedChip.chip.model}`);
+  }, [connected, resetPageRuntime, selectedChip, toast]);
+
+  const onRemovePack = useCallback(() => {
+    if (connected) { toast("info", "请先断开串口后再移除 CPack"); return; }
+    if (!selectedChip || !installedPacks.some((pack) => pack.chip.id === selectedChip.chip.id)) {
+      toast("info", "默认 CPack 不可移除");
+      return;
+    }
+    setInstalledPacks((previous) => removeInstalledPack(previous, selectedChip.chip.id));
+    setSelectedChipId("egmicro-chameleon");
+    persistSelectedChipId("egmicro-chameleon");
+    if (activeChip?.chip.id === selectedChip.chip.id) {
+      setActiveChip(null);
+      resetPageRuntime([]);
+      setAutoPoll(false);
+      setTab("chips");
+    }
+    toast("ok", `已移除 CPack：${selectedChip.chip.model}`);
+  }, [activeChip, connected, installedPacks, resetPageRuntime, selectedChip, toast]);
 
   /* ---------- 内存镜像更新 ---------- */
   const applyRead = useCallback((pageId: number, offset: number, data: Uint8Array, keys: string[] | "all") => {
@@ -278,6 +308,7 @@ export default function App() {
 
   /* ---------- 批量读写 ---------- */
   const doBatchRead = useCallback(async (pageId: number, opts?: { poll?: boolean }) => {
+    if (!activeChip) { toast("info", "请先在芯片选择页装载芯片"); return; }
     const page = pageOf(pagesRef.current, pageId);
     inflightRef.current++;
     if (!opts?.poll) setBatchBusy("read");
@@ -315,9 +346,10 @@ export default function App() {
       inflightRef.current--;
       if (!opts?.poll) setBatchBusy(null);
     }
-  }, [getEngine, applyRead, mark, toast, setAutoPoll]);
+  }, [activeChip, getEngine, applyRead, mark, toast, setAutoPoll]);
 
   const doBatchWrite = useCallback(async (pageId: number) => {
+    if (!activeChip) { toast("info", "请先在芯片选择页装载芯片"); return; }
     const page = pageOf(pagesRef.current, pageId);
     if (!page.writable) { toast("info", `${page.name} 为只读页，批量写将被拒绝（0x03）`); }
     const pageMem = mem[pageId];
@@ -362,7 +394,7 @@ export default function App() {
       inflightRef.current--;
       setBatchBusy(null);
     }
-  }, [getEngine, mem, setVals, readKeys, applyRead, mark, toast]);
+  }, [activeChip, getEngine, mem, setVals, readKeys, applyRead, mark, toast]);
 
   /* ---------- 帧构建发送 ---------- */
   const doSendCustom = useCallback(async (cmd: number, page: number, addr: number, data: Uint8Array) => {
@@ -445,7 +477,7 @@ export default function App() {
     URL.revokeObjectURL(a.href);
   }, [logs]);
 
-  const page = pageOf(pages, activePage);
+  const page = activeChip ? pageOf(pages, activePage) : null;
   const pageMem = mem[activePage] ?? null;
 
   return (
@@ -468,12 +500,17 @@ export default function App() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <div className="hidden items-center gap-1.5 rounded-lg border border-cyan-400/35 bg-cyan-400/[0.10] px-2.5 py-1 text-[11px] font-semibold text-cyan-100 shadow-[0_0_18px_-6px_rgba(34,211,238,0.55)] sm:flex">
+            <Cpu size={12} className="text-cyan-300" />
+            <span className="text-cyan-300/75">当前芯片</span>
+            <span>{activeChip?.chip.model ?? "待选择芯片"}</span>
+          </div>
           <Badge tone={connected ? "green" : "zinc"}>
             <span className={cn("size-1.5 rounded-full", connected ? "bg-emerald-400 animate-pulse-dot" : "bg-zinc-500")} />
             {connected ? "已连接" : "未连接"}
           </Badge>
-          <Badge tone="cyan">Web Serial · 免安装</Badge>
-          <Badge>v1.0</Badge>
+          <Badge tone="cyan">{transportMode === "bluetooth" ? "Web Bluetooth · BLE" : "Web Serial · 免安装"}</Badge>
+          <Badge>v1.1.0</Badge>
         </div>
       </header>
 
@@ -486,12 +523,15 @@ export default function App() {
             baud={baud} onBaud={setBaud}
             onConnect={connect} onDisconnect={disconnect}
             serialSupported={SERIAL_SUPPORTED}
+            bluetoothSupported={BLUETOOTH_SUPPORTED}
+            transportMode={transportMode}
+            onTransportMode={setTransportMode}
+            bluetoothName={bluetoothName}
+            onBluetoothName={setBluetoothName}
             otaBusy={otaBusy}
             pages={pages}
             activePage={activePage} onPage={setActivePage}
-            onImportExcel={(f) => void onImportExcel(f)}
-            onRestorePages={onRestorePages}
-            importing={importing}
+            chipReady={!!activeChip}
             onBatchRead={() => void doBatchRead(activePage)}
             onBatchWrite={() => void doBatchWrite(activePage)}
             batchBusy={batchBusy}
@@ -522,10 +562,11 @@ export default function App() {
             <ChevronRight size={12} className="ml-1 text-zinc-700" />
             <span className="hex-cell ml-1 text-[10.5px] text-zinc-600">
               {tab === "regs" && page && `${page.name} · PAGE 0x${h8(page.id)} · ${page.regs.length} regs · ${page.totalLen}B`}
+              {tab === "chips" && "安装 CPack · 选择芯片 · 装载寄存器定义"}
               {tab === "builder" && "HEX 帧编辑与校验"}
-              {tab === "ota" && (otaBusy ? "YModem 传输中 · 已独占串口" : "固件文件 · 波特率协商 · YModem")}
+              {tab === "ota" && (transportMode === "bluetooth" ? "蓝牙透传模式不支持 OTA" : otaBusy ? "YModem 传输中 · 已独占串口" : "固件文件 · 波特率协商 · YModem")}
               {tab === "docs" && "EGmicroChameleonComm 用户调试版"}
-              {tab === "guide" && "连接、导入 PAGE、读写与异常帧测试"}
+              {tab === "guide" && "选择芯片、连接、读写与异常帧测试"}
             </span>
           </nav>
 
@@ -533,9 +574,10 @@ export default function App() {
             {/* OTA 面板始终挂载，避免切走 Tab 时中断升级状态机 */}
             <div className={cn(tab !== "ota" && "hidden")}>
               <OtaPanel
-                connected={connected}
+                connected={connected && connectedTransport === "serial"}
                 engine={getEngine()}
                 uiBaud={baud}
+                otaSupported={transportMode === "serial"}
                 onBusy={setOtaBusy}
                 toast={toast}
               />
@@ -586,6 +628,19 @@ export default function App() {
                     </p>
                   </div>
                 )}
+                {tab === "chips" && (
+                  <ChipSelector
+                    packs={chipPacks}
+                    installedChipIds={new Set(installedPacks.map((pack) => pack.chip.id))}
+                    selectedId={selectedChip?.chip.id ?? ""}
+                    installing={installing}
+                    connected={connected}
+                    onSelectedId={setSelectedChipId}
+                    onInstall={(file) => void onInstallPack(file)}
+                    onRemove={onRemovePack}
+                    onConfirm={confirmChip}
+                  />
+                )}
                 {tab === "builder" && (
                   <div className="mx-auto max-w-6xl">
                     <FrameBuilder
@@ -622,7 +677,7 @@ export default function App() {
       <footer className="relative z-10 flex h-8 shrink-0 items-center gap-4 border-t border-white/[0.07] bg-[#060a10] px-4">
         <span className="hex-cell text-[10.5px] text-zinc-500">
           {connected ? transportDesc : "等待连接"}
-          {connected && ` · ${baud}bps`}
+          {connected && connectedTransport === "serial" && ` · ${baud}bps`}
           {otaBusy && " · OTA 升级中"}
         </span>
         <div className="hex-cell ml-auto flex items-center gap-4 text-[10.5px] text-zinc-500">

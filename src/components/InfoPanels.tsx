@@ -52,7 +52,7 @@ export function ProtocolDocs({ protoId }: { protoId: [number, number] }) {
               ["HEAD", "2", "0xEB90", "帧头"],
               ["ID", "2", idHex, "协议 ID（可配置，默认 0x1155）"],
               ["CMD", "1", "—", "命令字（读 0x52 / 写 0x57 / 升级 0x05）"],
-              ["PAGE", "1", "—", "页号，来自 Excel 结构体页数值（可导入）"],
+              ["PAGE", "1", "—", "页号，来自已装载芯片 Pack 的寄存器页定义"],
               ["ADDR", "1", "—", "偏移地址，结构体内寄存器起始地址"],
               ["LEN", "1", "—", "数据区长度 0~255"],
               ["DATA", "N", "—", "数据区"],
@@ -168,28 +168,29 @@ export function UserGuide() {
     <div className="mx-auto max-w-4xl space-y-4 pb-2">
       <Card title="用户使用说明" icon={<CircleHelp size={13} />}>
         <p className="mb-4 text-[12.5px] leading-relaxed text-zinc-500">
-          本页说明如何用这套 Web 上位机连接设备、导入寄存器表、读写寄存器、OTA 升级，以及如何用帧构建/解析做合法通信和异常帧测试。
+          本页说明如何选择芯片、安装 CPack、连接设备、读写寄存器、OTA 升级，以及如何用帧构建/解析做合法通信和异常帧测试。
         </p>
         <ol className="space-y-3.5 text-[12.5px] leading-relaxed text-zinc-400">
           <li>
-            <p className="font-semibold text-zinc-200">1. 环境与连接</p>
+            <p className="font-semibold text-zinc-200">1. 选择芯片与安装 CPack</p>
             <p className="mt-1">
-              请使用 Windows 版 Chrome / Edge（需 HTTPS 或 localhost）。左侧选择波特率（默认 115200，8N1 固定），点击
-              <span className="text-cyan-300">「选择并打开串口」</span>。不支持的浏览器会提示无法使用 Web Serial。
+              首先在<span className="text-cyan-300">「芯片选择」</span>页选择默认芯片或点击<span className="text-cyan-300">「安装 CPack」</span>安装新的 .CPack 文件；确认
+              <span className="text-cyan-300">「装载芯片并进入调试」</span>后，寄存器页与该 CPack 的协议 ID、串口波特率才会生效。外部安装的 CPack 可在此页移除，默认 CPack 不可移除。
             </p>
           </li>
           <li>
-            <p className="font-semibold text-zinc-200">2. 协议 ID</p>
+            <p className="font-semibold text-zinc-200">2. 环境与连接</p>
+            <p className="mt-1">
+              请使用 Windows 版 Chrome / Edge（需 HTTPS 或 localhost）。左侧可选择<span className="text-cyan-300">「串口」</span>或
+              <span className="text-cyan-300">「蓝牙透传」</span>，两者互斥：串口按所选波特率（8N1）连接；蓝牙会打开浏览器系统设备选择器，选择提供
+              <span className="hex-cell text-zinc-300">9a7f0001…c572</span> 服务的 CH572。蓝牙桥接 UART 固定 115200 bps、发送按 20B 分包（10ms 间隔）。
+            </p>
+          </li>
+          <li>
+            <p className="font-semibold text-zinc-200">3. 协议 ID</p>
             <p className="mt-1">
               默认 ID 为 <span className="hex-cell text-violet-300">11 55</span>。可在侧栏「Frame · 帧参数」或「帧构建」页修改，
               全局立刻生效（组帧、解析、校验共用），并会记住下次打开。ID 必须与固件一致，否则对端会丢弃帧，读请求会等待 0xAD 超时。
-            </p>
-          </li>
-          <li>
-            <p className="font-semibold text-zinc-200">3. 导入寄存器页（Excel）</p>
-            <p className="mt-1">
-              侧栏 Pages 区点击<span className="text-cyan-300">「导入」</span>，选择《寄存器结构表》xlsx（工作表「寄存器表」）。
-              解析后会替换调试页列表（含 0xF0 ProdInfo 等）。可用「内置」恢复 SysConfig / DisplayReg。导入结果会保存在浏览器本地。
             </p>
           </li>
           <li>
@@ -219,10 +220,10 @@ export function UserGuide() {
           <li>
             <p className="font-semibold text-zinc-200">7. OTA 升级</p>
             <p className="mt-1">
-              先连接串口，在「OTA 升级」页选择 <span className="hex-cell text-zinc-300">.bin</span> 固件，选低速 9600 或高速 115200，点「下载」。
+              先以<span className="text-cyan-300">串口模式</span>连接设备，在「OTA 升级」页选择 <span className="hex-cell text-zinc-300">.bin</span> 固件，选低速 9600 或高速 115200，点「下载」。
               流程与桌面版一致：升级请求 <span className="hex-cell text-violet-300">CMD=0x05 DATA=ROMUPGRADE</span>，
               再以 9600 发送 4 字节裸波特率，设备回 ACK(0x06) 后切到所选速率；确认菜单后走 YModem。
-              升级期间会独占串口并暂停寄存器读写/轮询，结束后恢复侧栏波特率。Web Serial 改波特率需要短暂关闭再打开同一端口。
+              升级期间会独占串口并暂停寄存器读写/轮询，结束后恢复侧栏波特率。Web Serial 改波特率需要短暂关闭再打开同一端口；蓝牙透传模式不支持 OTA。
             </p>
           </li>
           <li>
