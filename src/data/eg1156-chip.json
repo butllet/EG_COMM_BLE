@@ -1,0 +1,932 @@
+{
+  "schemaVersion": 1,
+  "chip": {
+    "id": "EG1156",
+    "model": "EG1156"
+  },
+  "version": "1.0.0",
+  "connection": {
+    "protocolId": "11 56",
+    "baud": 115200
+  },
+  "pages": [
+    {
+      "id": 1,
+      "name": "OperateData",
+      "cn": "OperateData",
+      "writable": false,
+      "totalLen": 36,
+      "regs": [
+        {
+          "name": "vin",
+          "label": "输入电压",
+          "offset": 0,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "iin",
+          "label": "输入电流",
+          "offset": 4,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vout",
+          "label": "输出电压",
+          "offset": 8,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "iout",
+          "label": "输出电流",
+          "offset": 12,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vext",
+          "label": "外部电压",
+          "offset": 16,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vaux",
+          "label": "辅助电源电压",
+          "offset": 20,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "temp1",
+          "label": "温度传感器1",
+          "offset": 24,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "temp2",
+          "label": "温度传感器2",
+          "offset": 28,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "timestamp_ms",
+          "label": "采样时间戳",
+          "offset": 32,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "AdcCalib",
+      "cn": "AdcCalib",
+      "writable": true,
+      "totalLen": 64,
+      "regs": [
+        {
+          "name": "vin_gain",
+          "label": "输入电压增益",
+          "offset": 0,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vin_offset",
+          "label": "输入电压偏移",
+          "offset": 4,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "iin_gain",
+          "label": "输入电流增益",
+          "offset": 8,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "iin_offset",
+          "label": "输入电流偏移",
+          "offset": 12,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vout_gain",
+          "label": "输出电压增益",
+          "offset": 16,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vout_offset",
+          "label": "输出电压偏移",
+          "offset": 20,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "iout_gain",
+          "label": "输出电流增益",
+          "offset": 24,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "iout_offset",
+          "label": "输出电流偏移",
+          "offset": 28,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vext_gain",
+          "label": "外部电压增益",
+          "offset": 32,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vext_offset",
+          "label": "外部电压偏移",
+          "offset": 36,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vaux_gain",
+          "label": "辅助电源电压增益",
+          "offset": 40,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "vaux_offset",
+          "label": "辅助电源电压偏移",
+          "offset": 44,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "temp1_gain",
+          "label": "温度1增益",
+          "offset": 48,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "temp1_offset",
+          "label": "温度1偏移",
+          "offset": 52,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "temp2_gain",
+          "label": "温度2增益",
+          "offset": 56,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "temp2_offset",
+          "label": "温度2偏移",
+          "offset": 60,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "VgridPLL",
+      "cn": "VgridPLL",
+      "writable": false,
+      "totalLen": 32,
+      "regs": [
+        {
+          "name": "Amplitude",
+          "label": "信号幅值",
+          "offset": 0,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "Phase",
+          "label": "信号相位",
+          "offset": 4,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "Theta",
+          "label": "当前角度",
+          "offset": 8,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "Omega",
+          "label": "当前角速度",
+          "offset": 12,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "OmegaAvg",
+          "label": "平均角速度",
+          "offset": 16,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "SinTheta",
+          "label": "sin(theta)",
+          "offset": 20,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "CosTheta",
+          "label": "cos(theta)",
+          "offset": 24,
+          "len": 4,
+          "access": "R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "LockFlag",
+          "label": "锁定状态",
+          "offset": 28,
+          "len": 1,
+          "access": "R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "ZeroCrossingNegativeFlag",
+          "label": "负向零交叉标志",
+          "offset": 29,
+          "len": 1,
+          "access": "R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "ZeroCrossingPositiveFlag",
+          "label": "正向零交叉标志",
+          "offset": 30,
+          "len": 1,
+          "access": "R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "Polarity",
+          "label": "极性标志",
+          "offset": 31,
+          "len": 1,
+          "access": "R",
+          "dtype": "uint8",
+          "scale": 1
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "PfcConfig",
+      "cn": "PfcConfig",
+      "writable": true,
+      "totalLen": 152,
+      "regs": [
+        {
+          "name": "hardware_power_max",
+          "label": "额定功率",
+          "offset": 0,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "grid_vol_rms_rated",
+          "label": "电网额定有效值电压",
+          "offset": 4,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "grid_vol_freq_rated",
+          "label": "电网额定频率",
+          "offset": 8,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "pll_freq_max",
+          "label": "PLL 角频率上限",
+          "offset": 12,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "pll_freq_min",
+          "label": "PLL 角频率下限",
+          "offset": 16,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "sogi_k",
+          "label": "SOGI 参数 K",
+          "offset": 20,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "sogi_gain",
+          "label": "SOGI/PLL 归一化增益",
+          "offset": 24,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "sogi_mode",
+          "label": "SOGI 工作模式",
+          "offset": 28,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "uint32",
+          "scale": 1
+        },
+        {
+          "name": "pll_kp",
+          "label": "PLL 比例系数",
+          "offset": 32,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "pll_ki",
+          "label": "PLL 积分系数",
+          "offset": 36,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "pll_lock_filter_cnt",
+          "label": "PLL 锁定滤波计数阈值",
+          "offset": 40,
+          "len": 2,
+          "access": "W/R",
+          "dtype": "uint16",
+          "scale": 1
+        },
+        {
+          "name": "pll_unlock_filter_cnt",
+          "label": "PLL 解锁滤波计数阈值",
+          "offset": 42,
+          "len": 2,
+          "access": "W/R",
+          "dtype": "uint16",
+          "scale": 1
+        },
+        {
+          "name": "pll_lock_phase_ek_thd",
+          "label": "PLL 锁定相位误差阈值",
+          "offset": 44,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "pll_lock_amplitude_min",
+          "label": "PLL 锁定最小幅值",
+          "offset": 48,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "pll_lock_amplitude_max",
+          "label": "PLL 锁定最大幅值",
+          "offset": 52,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "pll_lock_omega_min",
+          "label": "PLL 锁定最小角速度",
+          "offset": 56,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "pll_lock_omega_max",
+          "label": "PLL 锁定最大角速度",
+          "offset": 60,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "reactive_power_range",
+          "label": "无功调节范围",
+          "offset": 64,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "hiccup_i_thd",
+          "label": "打嗝模式电流阈值",
+          "offset": 68,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_f_max_init",
+          "label": "DAB 初始最大频率",
+          "offset": 72,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_l_lk",
+          "label": "DAB 漏感",
+          "offset": 76,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_n",
+          "label": "DAB 变比",
+          "offset": 80,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_k",
+          "label": "DAB 系数 K",
+          "offset": 84,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_tim_clk",
+          "label": "DAB 定时器时钟",
+          "offset": 88,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_kp",
+          "label": "DAB 电流环比例系数",
+          "offset": 92,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_ki",
+          "label": "DAB 电流环积分系数",
+          "offset": 96,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_vol_kp",
+          "label": "DAB 电压环比例系数",
+          "offset": 100,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_vol_ki",
+          "label": "DAB 电压环积分系数",
+          "offset": 104,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_f_max_high",
+          "label": "DAB 最高允许频率",
+          "offset": 108,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "ssdab_f_max_low",
+          "label": "DAB 最低允许频率",
+          "offset": 112,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "q_compensation",
+          "label": "无功补偿值",
+          "offset": 116,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "i_q_kp",
+          "label": "无功 PID 比例系数",
+          "offset": 120,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "i_q_ki",
+          "label": "无功 PID 积分系数",
+          "offset": 124,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "i_q_kd",
+          "label": "无功 PID 微分系数",
+          "offset": 128,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "estimate_pih_max_limited",
+          "label": "频率估计器 PI 输出上限",
+          "offset": 132,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "dab_phi_max",
+          "label": "DAB 大相位最大值",
+          "offset": 136,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "dab_phi_shaving",
+          "label": "DAB 削相阈值",
+          "offset": 140,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "dab_a",
+          "label": "DAB 内部系数 a",
+          "offset": 144,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "islanding_coef",
+          "label": "孤岛检测系数",
+          "offset": 148,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "ControlCommand",
+      "cn": "ControlCommand",
+      "writable": true,
+      "totalLen": 8,
+      "regs": [
+        {
+          "name": "save_param_cmd",
+          "label": "保存参数命令",
+          "offset": 0,
+          "len": 1,
+          "access": "W/R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "power_switch_cmd",
+          "label": "开关命令预留",
+          "offset": 1,
+          "len": 1,
+          "access": "W/R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "reserved0",
+          "label": "预留0",
+          "offset": 2,
+          "len": 1,
+          "access": "W/R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "reserved1",
+          "label": "预留1",
+          "offset": 3,
+          "len": 1,
+          "access": "W/R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "last_action",
+          "label": "最近动作类型",
+          "offset": 4,
+          "len": 1,
+          "access": "W/R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "last_result",
+          "label": "最近动作结果",
+          "offset": 5,
+          "len": 1,
+          "access": "W/R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "reserved2",
+          "label": "预留2",
+          "offset": 6,
+          "len": 1,
+          "access": "W/R",
+          "dtype": "uint8",
+          "scale": 1
+        },
+        {
+          "name": "reserved3",
+          "label": "预留3",
+          "offset": 7,
+          "len": 1,
+          "access": "W/R",
+          "dtype": "uint8",
+          "scale": 1
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "DAB_CommIref",
+      "cn": "DAB_CommIref",
+      "writable": true,
+      "totalLen": 8,
+      "regs": [
+        {
+          "name": "IrefAmplitudeP",
+          "label": "有功电流参考幅值",
+          "offset": 0,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        },
+        {
+          "name": "IrefAmplitudeQ",
+          "label": "无功电流参考幅值",
+          "offset": 4,
+          "len": 4,
+          "access": "W/R",
+          "dtype": "float",
+          "scale": 1
+        }
+      ]
+    },
+    {
+      "id": 240,
+      "name": "ProdInfo",
+      "cn": "ProdInfo",
+      "writable": true,
+      "totalLen": 110,
+      "regs": [
+        {
+          "name": "layout_ver",
+          "label": "布局版本",
+          "offset": 0,
+          "len": 2,
+          "access": "R",
+          "dtype": "uint16",
+          "scale": 1
+        },
+        {
+          "name": "flags",
+          "label": "标志",
+          "offset": 2,
+          "len": 2,
+          "access": "W/R",
+          "dtype": "uint16",
+          "scale": 1
+        },
+        {
+          "name": "sw_version",
+          "label": "软件版本",
+          "offset": 4,
+          "len": 16,
+          "access": "R",
+          "dtype": "char",
+          "scale": 1
+        },
+        {
+          "name": "hw_version",
+          "label": "硬件版本",
+          "offset": 20,
+          "len": 16,
+          "access": "W/R",
+          "dtype": "char",
+          "scale": 1
+        },
+        {
+          "name": "chip_uid",
+          "label": "芯片UID",
+          "offset": 36,
+          "len": 16,
+          "access": "R",
+          "dtype": "bytes",
+          "scale": 1
+        },
+        {
+          "name": "batch_no",
+          "label": "生产批次号",
+          "offset": 52,
+          "len": 16,
+          "access": "W/R",
+          "dtype": "char",
+          "scale": 1
+        },
+        {
+          "name": "prod_sn",
+          "label": "生产SN",
+          "offset": 68,
+          "len": 16,
+          "access": "W/R",
+          "dtype": "char",
+          "scale": 1
+        },
+        {
+          "name": "mfg_date",
+          "label": "出厂日期",
+          "offset": 84,
+          "len": 8,
+          "access": "W/R",
+          "dtype": "char",
+          "scale": 1
+        },
+        {
+          "name": "model_code",
+          "label": "机型代码",
+          "offset": 92,
+          "len": 16,
+          "access": "W/R",
+          "dtype": "char",
+          "scale": 1
+        },
+        {
+          "name": "crc16",
+          "label": "页CRC",
+          "offset": 108,
+          "len": 2,
+          "access": "R",
+          "dtype": "uint16",
+          "scale": 1
+        }
+      ]
+    }
+  ]
+}
